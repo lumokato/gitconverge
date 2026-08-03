@@ -1,0 +1,7 @@
+/bin/
+/dist/
+/.tmp/
+/.local/
+*.log
+config.local.toml
+*.exe~

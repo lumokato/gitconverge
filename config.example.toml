@@ -1,0 +1,45 @@
+version = 1
+interval = "10m"
+run_timeout = "8m"
+command_timeout = "3m"
+max_parallel = 2
+notification_cooldown = "6h"
+
+[logging]
+enabled = true
+max_age = "336h"
+max_size_mb = 10
+
+[notification]
+type = "none"
+# 如需钉钉通知，将 type 改为 "dingtalk"，并通过环境变量注入凭据：
+# webhook_env = "GITCONVERGE_DINGTALK_WEBHOOK"
+# secret_env = "GITCONVERGE_DINGTALK_SECRET"
+
+[[repositories]]
+id = "notes"
+path = "%USERPROFILE%\\Documents\\notes"
+remote = "origin"
+branch = "main"
+divergence = "notify"
+fetch_interval = "10m"
+dirty_notice_after = "30m"
+
+[repositories.fallback_commit]
+enabled = false
+after = "6h"
+message = "recovery(notes): preserve unattended changes"
+
+[[repositories]]
+id = "website"
+path = "%USERPROFILE%\\Projects\\website"
+remote = "origin"
+branch = "main"
+divergence = "merge"
+fetch_interval = "20m"
+dirty_notice_after = "30m"
+
+[repositories.fallback_commit]
+enabled = false
+after = "6h"
+message = "recovery(website): preserve unattended changes"
