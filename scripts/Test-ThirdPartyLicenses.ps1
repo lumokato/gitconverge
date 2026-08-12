@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
-$rows = go list -deps -f '{{with .Module}}{{if not .Main}}{{.Path}}@{{.Version}}|{{.Dir}}{{end}}{{end}}' .\cmd\gitconverge .\cmd\gitconverge-tray |
+$rows = go list -deps -f '{{with .Module}}{{if not .Main}}{{.Path}}@{{.Version}}|{{.Dir}}{{end}}{{end}}' ./cmd/gitconverge ./cmd/gitconverge-tray |
     Where-Object { $_ } |
     Sort-Object -Unique
 
@@ -14,7 +14,7 @@ foreach ($row in $rows) {
     }
     foreach ($license in $licenses) {
         $fileName = (($module + '_' + $license.Name) -replace '[^A-Za-z0-9._-]+', '_') + '.txt'
-        $copyPath = Join-Path $root "third_party_licenses\$fileName"
+        $copyPath = Join-Path (Join-Path $root "third_party_licenses") $fileName
         if (-not (Test-Path -LiteralPath $copyPath)) {
             throw "Missing third-party license copy: $fileName"
         }

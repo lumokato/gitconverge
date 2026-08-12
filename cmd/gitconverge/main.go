@@ -78,7 +78,9 @@ func runSync(arguments []string) error {
 		return errors.Join(err, writeRunLog(configuration, startedAt, completedAt, nil, err))
 	}
 	application := app.Application{Git: gitx.Client{Runner: execx.Runner{}, Timeout: configuration.CommandTimeout.Duration}, Notifier: notifier}
-	ctx, cancel := context.WithTimeout(context.Background(), configuration.RunTimeout.Duration)
+	signalContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	ctx, cancel := context.WithTimeout(signalContext, configuration.RunTimeout.Duration)
 	defer cancel()
 	results, runErr := application.Run(ctx, configuration)
 	completedAt := time.Now()
@@ -260,9 +262,12 @@ func installTask(arguments []string) error {
 	if err != nil {
 		return err
 	}
-	trayExecutable := filepath.Join(filepath.Dir(executable), install.TrayExecutableName)
-	if _, err := os.Stat(trayExecutable); err != nil {
-		return fmt.Errorf("tray executable is unavailable: %w", err)
+	trayExecutable := ""
+	if install.TrayRequired() {
+		trayExecutable = filepath.Join(filepath.Dir(executable), install.TrayExecutableName)
+		if _, err := os.Stat(trayExecutable); err != nil {
+			return fmt.Errorf("tray executable is unavailable: %w", err)
+		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -270,7 +275,14 @@ func installTask(arguments []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Installed executable: %s\nInstalled tray: %s\nInstalled config: %s\nScheduled task: %s\n", result.Executable, result.TrayExecutable, result.Config, result.Task)
+	fmt.Printf("Installed executable: %s\n", result.Executable)
+	if result.TrayExecutable != "" {
+		fmt.Printf("Installed tray: %s\n", result.TrayExecutable)
+	}
+	fmt.Printf("Installed config: %s\nScheduled task: %s\n", result.Config, result.Task)
+	if result.Notice != "" {
+		fmt.Printf("Notice: %s\n", result.Notice)
+	}
 	return nil
 }
 

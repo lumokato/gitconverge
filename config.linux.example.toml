@@ -1,0 +1,47 @@
+version = 1
+interval = "10m"
+run_timeout = "8m"
+command_timeout = "3m"
+max_parallel = 2
+notification_cooldown = "6h"
+
+[logging]
+enabled = true
+max_age = "336h"
+max_size_mb = 10
+
+[notification]
+type = "none"
+# 如需钉钉通知，通过 systemd 环境文件注入凭据，不要提交到仓库：
+# webhook_env = "GITCONVERGE_DINGTALK_WEBHOOK"
+# secret_env = "GITCONVERGE_DINGTALK_SECRET"
+
+[[repositories]]
+id = "core"
+path = "~/Core"
+remote = "origin"
+branch = "main"
+divergence = "notify"
+fetch_interval = "10m"
+dirty_notice_after = "30m"
+
+[repositories.fallback_commit]
+enabled = false
+after = "6h"
+message = "recovery(core): preserve unattended changes"
+
+[[repositories]]
+id = "skills"
+path = "~/.codex/skills"
+remote = "origin"
+branch = "main"
+divergence = "notify"
+fetch_interval = "10m"
+dirty_notice_after = "30m"
+
+# GitConverge 不提供路径级过滤。启用同步前，必须确认个人 Skills 仓库已通过
+# .gitignore 排除 .system/，并且该目录中的文件从未进入 Git 跟踪。
+[repositories.fallback_commit]
+enabled = false
+after = "6h"
+message = "recovery(skills): preserve unattended changes"

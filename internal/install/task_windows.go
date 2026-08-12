@@ -26,7 +26,15 @@ const (
 	trayRunValueName   = "GitConverge"
 )
 
-type Result struct{ Executable, TrayExecutable, Config, Task string }
+type Result struct {
+	Executable     string
+	TrayExecutable string
+	Config         string
+	Task           string
+	Notice         string
+}
+
+func TrayRequired() bool { return true }
 
 type taskDocument struct {
 	XMLName      xml.Name     `xml:"Task"`

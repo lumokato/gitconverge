@@ -69,8 +69,9 @@ func TestRunCheckAndSyncTemporaryRepository(t *testing.T) {
 }
 
 func TestRunLogsInvalidConfiguration(t *testing.T) {
-	localAppData := filepath.Join(t.TempDir(), "local")
-	t.Setenv("LOCALAPPDATA", localAppData)
+	cacheRoot := filepath.Join(t.TempDir(), "cache")
+	t.Setenv("LOCALAPPDATA", cacheRoot)
+	t.Setenv("XDG_CACHE_HOME", cacheRoot)
 	configPath := filepath.Join(t.TempDir(), "config.toml")
 	if err := os.WriteFile(configPath, []byte("not valid toml = ["), 0o600); err != nil {
 		t.Fatal(err)
@@ -78,7 +79,7 @@ func TestRunLogsInvalidConfiguration(t *testing.T) {
 	if err := run([]string{"run", "--config", configPath}); err == nil {
 		t.Fatal("expected invalid configuration error")
 	}
-	content, err := os.ReadFile(filepath.Join(localAppData, "GitConverge", "runs.jsonl"))
+	content, err := os.ReadFile(filepath.Join(cacheRoot, "GitConverge", "runs.jsonl"))
 	if err != nil {
 		t.Fatal(err)
 	}

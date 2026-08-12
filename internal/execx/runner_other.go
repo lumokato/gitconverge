@@ -1,12 +1,33 @@
-// 本文件为非 Windows 平台提供基础命令执行实现，跨平台进程组清理将在后续里程碑补强。
+// 本文件在 Unix 平台把 Git 及其 SSH 子进程放入独立进程组，确保超时后完整清理。
 //go:build !windows
 
 package execx
 
-import "os/exec"
+import (
+	"errors"
+	"os"
+	"os/exec"
+	"syscall"
+)
 
-func configureCommand(command *exec.Cmd, hideWindow bool) {}
+func configureCommand(command *exec.Cmd, hideWindow bool) {
+	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	command.Cancel = func() error {
+		if command.Process == nil {
+			return os.ErrProcessDone
+		}
+		return killProcessGroup(command.Process.Pid)
+	}
+}
 
 func attachProcessTree(command *exec.Cmd) (func(), error) {
 	return func() {}, nil
+}
+
+func killProcessGroup(processID int) error {
+	err := syscall.Kill(-processID, syscall.SIGKILL)
+	if errors.Is(err, syscall.ESRCH) {
+		return os.ErrProcessDone
+	}
+	return err
 }
