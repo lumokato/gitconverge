@@ -1,5 +1,5 @@
 // 本文件为非 Windows 开发测试提供基础浏览器打开能力。
-//go:build !windows
+//go:build !windows && !darwin
 
 package dashboard
 
@@ -16,7 +16,7 @@ func openURL(value string) error {
 	if runtime.GOOS == "darwin" {
 		name = "open"
 	}
-	return exec.Command(name, value).Start()
+	return exec.Command(name, value).Run()
 }
 
 func chooseFolder() (string, error) {

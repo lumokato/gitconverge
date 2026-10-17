@@ -78,7 +78,7 @@ func buildLaunchAgent(executable, cfg, home string, interval, timeout time.Durat
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>Label</key><string>%s</string>
-<key>ProgramArguments</key><array><string>%s</string><string>run</string><string>--config</string><string>%s</string></array>
+<key>ProgramArguments</key><array><string>%s</string><string>run</string><string>--scheduled</string><string>--config</string><string>%s</string></array>
 <key>RunAtLoad</key><true/>
 <key>StartInterval</key><integer>%d</integer>
 <key>ProcessType</key><string>Background</string>
@@ -200,7 +200,12 @@ func Install(ctx context.Context, executable, _ string, cfg string, interval, ti
 	if err != nil {
 		return Result{}, err
 	}
-	snapshots, backup, err := snapshotDarwin(p.executable, p.config)
+	idle, err := idleDarwin()
+	if err != nil {
+		return Result{}, err
+	}
+	defer idle.Release()
+	snapshots, backup, err := snapshotDarwin(p.executable, p.config, p.plist)
 	if err != nil {
 		return Result{}, err
 	}
@@ -225,12 +230,20 @@ func Install(ctx context.Context, executable, _ string, cfg string, interval, ti
 	if _, err = config.Save(p.config, configuration); err != nil {
 		return rollback(err)
 	}
-	if err = Update(ctx, "", p.executable, p.config, interval, timeout, runner); err != nil {
+	if err = updateDarwin(ctx, p.executable, p.config, interval, timeout, runner); err != nil {
 		return rollback(err)
 	}
-	return Result{Executable: p.executable, Config: p.config, Task: TaskName, Notice: "Backups: " + backup + "; LaunchAgent runs only while logged in, not during sleep. Missed sleep intervals coalesce on wake; logout unloads it. Logs: configured state_dir/runs.jsonl. No tray required."}, nil
+	return Result{Executable: p.executable, Config: p.config, Task: TaskName, Notice: "Backups: " + backup + "; LaunchAgent runs only while logged in, not during sleep. Missed sleep intervals coalesce on wake; logout unloads it. Logs: configured state_dir/runs.jsonl. Menu bar runs independently of this worker."}, nil
 }
 func Update(ctx context.Context, _ string, executable, cfg string, interval, timeout time.Duration, runner execx.Runner) error {
+	idle, err := idleDarwin()
+	if err != nil {
+		return err
+	}
+	defer idle.Release()
+	return updateDarwin(ctx, executable, cfg, interval, timeout, runner)
+}
+func updateDarwin(ctx context.Context, executable, cfg string, interval, timeout time.Duration, runner execx.Runner) error {
 	p, err := defaultDarwinPaths()
 	if err != nil {
 		return err
@@ -281,6 +294,11 @@ func Update(ctx context.Context, _ string, executable, cfg string, interval, tim
 	return nil
 }
 func Uninstall(ctx context.Context, runner execx.Runner) error {
+	idle, err := idleDarwin()
+	if err != nil {
+		return err
+	}
+	defer idle.Release()
 	p, err := defaultDarwinPaths()
 	if err != nil {
 		return err

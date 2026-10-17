@@ -47,6 +47,8 @@ func run(arguments []string) error {
 		return showStatus(arguments)
 	case "dashboard":
 		return showDashboard(arguments)
+	case "desktop-bridge":
+		return desktopCommand()
 	case "install":
 		return installTask(arguments)
 	case "uninstall":
@@ -64,8 +66,12 @@ func runSync(arguments []string) error {
 	flags := flag.NewFlagSet("run", flag.ContinueOnError)
 	configPath := flags.String("config", "", "configuration file")
 	asJSON := flags.Bool("json", false, "write JSON results")
+	scheduled := flags.Bool("scheduled", false, "respect the macOS automatic-sync pause marker")
 	if err := flags.Parse(arguments); err != nil {
 		return err
+	}
+	if *scheduled && scheduledPause() {
+		return nil
 	}
 	configuration, err := config.Load(*configPath)
 	if err != nil {

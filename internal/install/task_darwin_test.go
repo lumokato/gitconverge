@@ -27,7 +27,7 @@ func TestLaunchAgentArgumentsAndSchedule(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, want := range []string{`<integer>600</integer>`, `<key>RunAtLoad</key><true/>`, `test &amp; user`, `<string>run</string><string>--config</string>`, `GIT_TERMINAL_PROMPT`, `BatchMode=yes`, `StrictHostKeyChecking=yes`, `<key>Umask</key><integer>63</integer>`} {
+	for _, want := range []string{`<integer>600</integer>`, `<key>RunAtLoad</key><true/>`, `test &amp; user`, `<string>run</string><string>--scheduled</string><string>--config</string>`, `GIT_TERMINAL_PROMPT`, `BatchMode=yes`, `StrictHostKeyChecking=yes`, `<key>Umask</key><integer>63</integer>`} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("missing %s in %s", want, content)
 		}

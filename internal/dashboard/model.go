@@ -13,6 +13,7 @@ import (
 )
 
 type Runtime struct {
+	AutomaticPaused    bool     `json:"automaticPaused"`
 	SyncActive         bool     `json:"syncActive"`
 	ActiveRepositories []string `json:"activeRepositories,omitempty"`
 	WorkerInstalled    bool     `json:"workerInstalled"`

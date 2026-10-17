@@ -80,12 +80,31 @@ jobs:
             dist/GitConverge-${{ needs.metadata.outputs.version }}-linux-amd64.tar.gz
             dist/GitConverge-${{ needs.metadata.outputs.version }}-linux-amd64.tar.gz.sha256
 
+  macos-amd64:
+    needs: metadata
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build and test native Intel desktop
+        run: bash ./scripts/build-macos-release.sh "${{ needs.metadata.outputs.version }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GitConverge-${{ needs.metadata.outputs.version }}-macos-amd64
+          path: |
+            dist/GitConverge-${{ needs.metadata.outputs.version }}-macos-amd64.zip
+            dist/GitConverge-${{ needs.metadata.outputs.version }}-macos-amd64.zip.sha256
+
   publish:
     if: github.event_name == 'push'
     needs:
       - metadata
       - windows-installer
       - linux-amd64
+      - macos-amd64
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -101,13 +120,14 @@ jobs:
           tag="${{ github.ref_name }}"
           version="${{ needs.metadata.outputs.version }}"
           mapfile -t assets < <(find dist -maxdepth 1 -type f -print | sort)
-          if [[ "${#assets[@]}" -ne 4 ]]; then
-            printf 'Expected four release assets, found %s:\n' "${#assets[@]}" >&2
+          if [[ "${#assets[@]}" -ne 6 ]]; then
+            printf 'Expected six release assets, found %s:\n' "${#assets[@]}" >&2
             printf '  %s\n' "${assets[@]}" >&2
             exit 1
           fi
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "${assets[@]}" --clobber
+            echo "Release already exists; refusing to overwrite published assets." >&2
+            exit 1
           else
             gh release create "$tag" "${assets[@]}" --title "GitConverge $version" --generate-notes
           fi

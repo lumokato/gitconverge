@@ -13,6 +13,7 @@ import (
 )
 
 func Load(configPath string, runtime Runtime) (Snapshot, error) {
+	runtime = refreshRuntime(runtime)
 	configuration, err := config.Load(configPath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {

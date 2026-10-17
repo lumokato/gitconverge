@@ -35,6 +35,7 @@ type Server struct {
 	runtime    Runtime
 	managed    bool
 	runMu      sync.Mutex
+	runPending bool
 }
 
 func Start(configPath, workerPath string) (*Server, error) {
@@ -86,6 +87,9 @@ func (server *Server) Snapshot() (Snapshot, error) {
 func (server *Server) RunNow() error {
 	server.runMu.Lock()
 	defer server.runMu.Unlock()
+	if server.runPending {
+		return fmt.Errorf("同步已在运行")
+	}
 	if _, err := LoadConfigurationDocument(server.ConfigPath); err != nil {
 		return err
 	}
@@ -104,7 +108,14 @@ func (server *Server) RunNow() error {
 	if err := command.Start(); err != nil {
 		return err
 	}
-	return command.Process.Release()
+	server.runPending = true
+	go func() {
+		_ = command.Wait()
+		server.runMu.Lock()
+		server.runPending = false
+		server.runMu.Unlock()
+	}()
+	return nil
 }
 
 func (server *Server) SaveConfiguration(document ConfigurationDocument) error {
