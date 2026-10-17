@@ -22,6 +22,8 @@
 
 安装前保存 app、worker、配置、两个 plist 和状态目录到 `~/Library/Application Support/GitConverge/desktop-backups/<timestamp-pid>`；worker另有逐文件原子备份 `backups/<timestamp>/manifest.txt`。备份含私有配置，只存本机。
 
+失败恢复按所有权分离：Go installer在全局同步锁内负责worker/配置/worker plist的原子回滚；外层脚本仅恢复app/UI plist，绝不停止或覆盖worker。若worker升级成功、随后UI登录任务加载失败，保留已升级worker及其正常同步，明确报告“仅UI已回滚”，待同步空闲后重试；不承诺整包失败一定回到同一旧版本。初检后若有同步启动，Go installer拒绝busy，外层只恢复UI，不中断该同步。
+
 回滚前先退出菜单栏，等待同步空闲，执行：
 
 ```bash

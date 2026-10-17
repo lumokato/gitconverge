@@ -29,31 +29,33 @@ done
 printf '%s\n' 'Restore only program/plists by default; state/config copies are for inspection, do not overwrite newer user data.' > "$backup/RESTORE.txt"
 ui_loaded=false
 if launchctl print "$domain/com.gitconverge.menubar" >/dev/null 2>&1; then ui_loaded=true; launchctl bootout "$domain/com.gitconverge.menubar"; fi
-worker_loaded=false
-if launchctl print "$domain/com.gitconverge.worker" >/dev/null 2>&1; then worker_loaded=true; fi
+worker_updated=false
 rollback() {
  trap - ERR
- echo "Installation failed. Recovery copies: $backup" >&2
+ echo "Desktop installation failed. Recovery copies: $backup" >&2
+ # Shell owns ONLY UI rollback. Worker/config/plist rollback is exclusively
+ # the Go installer's locked transaction. Never bootout or overwrite a worker
+ # here: a sync may have started since either the initial check or install.
  launchctl bootout "$domain/com.gitconverge.menubar" >/dev/null 2>&1 || true
- launchctl bootout "$domain/com.gitconverge.worker" >/dev/null 2>&1 || true
  if [[ -d "$app" ]]; then mv "$app" "$backup/failed-app"; fi
  if [[ -d "$backup/GitConverge.app" ]]; then ditto "$backup/GitConverge.app" "$app"; fi
- for name in gitconverge config.toml com.gitconverge.worker.plist com.gitconverge.menubar.plist; do
-  case "$name" in
-   gitconverge) target="$HOME/.local/bin/gitconverge";;
-   config.toml) target="$config";;
-   *) target="$HOME/Library/LaunchAgents/$name";;
-  esac
-  if [[ -f "$backup/$name" ]]; then cp -p "$backup/$name" "$target";
-  elif [[ -f "$target" ]]; then mv "$target" "$backup/failed-$name"; fi
- done
- if $worker_loaded; then launchctl bootstrap "$domain" "$HOME/Library/LaunchAgents/com.gitconverge.worker.plist" || true; fi
+ if [[ -f "$backup/com.gitconverge.menubar.plist" ]]; then
+  cp -p "$backup/com.gitconverge.menubar.plist" "$plist"
+ elif [[ -f "$plist" ]]; then
+  mv "$plist" "$backup/failed-menubar.plist"
+ fi
  if $ui_loaded; then launchctl bootstrap "$domain" "$plist" || true; fi
+ if $worker_updated; then
+  echo 'Worker upgrade succeeded and remains installed/running. Only UI was rolled back; retry installation after sync becomes idle.' >&2
+ else
+  echo 'Worker transaction did not complete; its own lock/rollback preserves the previous installation. Shell did not touch it.' >&2
+ fi
 }
 trap rollback ERR
 if [[ -d "$app" ]]; then mv "$app" "$backup/previous-live.app"; fi
 ditto ./GitConverge.app "$app"
 ./GitConverge.app/Contents/MacOS/gitconverge-worker install --config "$source_config"
+worker_updated=true
 /usr/bin/python3 - "$app" "$plist" <<'PY'
 import plistlib,sys,os
 app,path=sys.argv[1:]
