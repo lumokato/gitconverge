@@ -50,7 +50,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
                 self.openDashboard()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                     if let window = self.window { self.capture(window.windowNumber, directory + "/dashboard-private.png") }
-                    if let iconWindow = self.item.button?.window { self.capture(iconWindow.windowNumber, directory + "/menubar-icon.png") }
+                    if let button = self.item.button, let iconWindow = button.window {
+                        let rect = iconWindow.convertToScreen(button.convert(button.bounds, to: nil))
+                        let screenTop = NSScreen.screens.first?.frame.maxY ?? 0
+                        let process = Process(); process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+                        process.arguments = ["-x", "-R\(Int(rect.minX)),\(Int(screenTop-rect.maxY)),\(Int(rect.width)),\(Int(rect.height))", directory + "/menubar-icon.png"]
+                        try? process.run(); process.waitUntilExit()
+                    }
                     let captureTimer = Timer(timeInterval: 2, repeats: false) { _ in
                         self.captureMenu(directory)
                         self.menu.cancelTracking()
