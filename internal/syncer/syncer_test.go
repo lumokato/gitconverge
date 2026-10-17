@@ -103,6 +103,50 @@ func TestSyncDoesNotRefetchRemoteAheadDirtyRepositoryBeforeInterval(t *testing.T
 	}
 }
 
+func TestSyncPreservesDirtyFilesAndDefersFastForward(t *testing.T) {
+	test := newGitTest(t)
+	originalHead := test.gitOutput(test.localA, "rev-parse", "HEAD")
+	test.write(test.localA, "shared.txt", "uncommitted local\n")
+	test.write(test.localA, "unique.txt", "unique local\n")
+	test.write(test.localB, "remote.txt", "remote\n")
+	test.git(test.localB, "add", "remote.txt")
+	test.git(test.localB, "commit", "-m", "remote update")
+	test.git(test.localB, "push", "origin", "main")
+	result := test.sync(test.localA, "notify")
+	if result.Status != StatusDeferred || !result.Dirty {
+		t.Fatalf("result = %+v", result)
+	}
+	if test.gitOutput(test.localA, "rev-parse", "HEAD") != originalHead {
+		t.Fatal("dirty HEAD moved")
+	}
+	for name, want := range map[string]string{"shared.txt": "uncommitted local\n", "unique.txt": "unique local\n"} {
+		got, err := os.ReadFile(filepath.Join(test.localA, name))
+		if err != nil || string(got) != want {
+			t.Fatalf("%s changed: %q %v", name, got, err)
+		}
+	}
+}
+
+func TestSyncNotifyDivergenceNeverForcePushes(t *testing.T) {
+	test := newGitTest(t)
+	test.write(test.localA, "shared.txt", "local\n")
+	test.git(test.localA, "add", "shared.txt")
+	test.git(test.localA, "commit", "-m", "local")
+	test.write(test.localB, "shared.txt", "remote\n")
+	test.git(test.localB, "add", "shared.txt")
+	test.git(test.localB, "commit", "-m", "remote")
+	test.git(test.localB, "push", "origin", "main")
+	localHead := test.gitOutput(test.localA, "rev-parse", "HEAD")
+	remoteHead := test.gitOutput(test.remote, "rev-parse", "main")
+	result := test.sync(test.localA, "notify")
+	if result.Status != StatusConflict {
+		t.Fatalf("result = %+v", result)
+	}
+	if test.gitOutput(test.localA, "rev-parse", "HEAD") != localHead || test.gitOutput(test.remote, "rev-parse", "main") != remoteHead {
+		t.Fatal("diverged history changed")
+	}
+}
+
 func TestSyncMergesNonConflictingDivergence(t *testing.T) {
 	test := newGitTest(t)
 	test.write(test.localA, "a.txt", "a\n")

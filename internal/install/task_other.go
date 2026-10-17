@@ -1,5 +1,5 @@
 // 本文件明确尚未支持的平台仍可直接运行核心同步命令。
-//go:build !windows && !linux
+//go:build !windows && !linux && !darwin
 
 package install
 
