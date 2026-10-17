@@ -24,7 +24,13 @@ mkdir -p "$backup" "$HOME/Applications" "$(dirname "$plist")"
 chmod 700 "$backup"
 for path in "$app" "$plist" "$HOME/.local/bin/gitconverge" "$config" "$HOME/Library/LaunchAgents/com.gitconverge.worker.plist" "$HOME/Library/Caches/GitConverge"; do
  if [[ -L "$path" ]]; then echo "Refuse symlink: $path" >&2; exit 1; fi
- if [[ -e "$path" ]]; then ditto "$path" "$backup/$(basename "$path")"; fi
+ if [[ -e "$path" ]]; then
+  name="$(basename "$path")"
+  # Default macOS volumes are case-insensitive: the worker `gitconverge`
+  # and cache directory `GitConverge` must not share a backup destination.
+  if [[ "$path" == "$HOME/Library/Caches/GitConverge" ]]; then name="state-cache"; fi
+  ditto "$path" "$backup/$name"
+ fi
 done
 printf '%s\n' 'Restore only program/plists by default; state/config copies are for inspection, do not overwrite newer user data.' > "$backup/RESTORE.txt"
 ui_loaded=false

@@ -27,6 +27,9 @@ for scenario in ['busy-after-check', 'ui-bootstrap-fails', 'success']:
     for name, path in paths.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text('old-'+name+'\n')
+    cache = home / 'Library/Caches/GitConverge'
+    cache.mkdir(parents=True)
+    (cache / 'state.json').write_text('original-state\n')
     worker = fixture / 'GitConverge.app/Contents/MacOS/gitconverge-worker'
     worker.parent.mkdir(parents=True)
     worker.write_text('''#!/bin/bash
@@ -68,6 +71,9 @@ source ./install.sh
     assert 'UNSAFE' not in log, log
     assert 'bootout gui/'+str(os.getuid())+'/com.gitconverge.worker' not in log
     assert (home / 'worker.active').exists(), 'rollback stopped active operation'
+    assert (cache / 'state.json').read_text() == 'original-state\n'
+    cache_backups = list(home.glob('Library/Application Support/GitConverge/desktop-backups/*/state-cache/state.json'))
+    assert len(cache_backups) == 1 and cache_backups[0].read_text() == 'original-state\n', 'state cache backup missing'
     if scenario == 'busy-after-check':
         assert result.returncode != 0
         for name in ['config', 'worker', 'worker-plist', 'ui-plist', 'app']:
