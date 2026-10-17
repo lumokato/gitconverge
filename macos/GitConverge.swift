@@ -50,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
                 self.openDashboard()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                     if let window = self.window { self.capture(window.windowNumber, directory + "/dashboard-private.png") }
+                    if let iconWindow = self.item.button?.window { self.capture(iconWindow.windowNumber, directory + "/menubar-icon.png") }
                     let captureTimer = Timer(timeInterval: 2, repeats: false) { _ in
                         self.captureMenu(directory)
                         self.menu.cancelTracking()
