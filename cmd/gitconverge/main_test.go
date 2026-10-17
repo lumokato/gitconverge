@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/lumokato/gitconverge/internal/config"
 )
 
 func TestRunCheckAndSyncTemporaryRepository(t *testing.T) {
@@ -72,6 +74,11 @@ func TestRunLogsInvalidConfiguration(t *testing.T) {
 	cacheRoot := filepath.Join(t.TempDir(), "cache")
 	t.Setenv("LOCALAPPDATA", cacheRoot)
 	t.Setenv("XDG_CACHE_HOME", cacheRoot)
+	t.Setenv("HOME", t.TempDir()) // Darwin uses ~/Library/Caches, not XDG_CACHE_HOME.
+	stateDir, err := config.DefaultStateDir()
+	if err != nil {
+		t.Fatal(err)
+	}
 	configPath := filepath.Join(t.TempDir(), "config.toml")
 	if err := os.WriteFile(configPath, []byte("not valid toml = ["), 0o600); err != nil {
 		t.Fatal(err)
@@ -79,7 +86,7 @@ func TestRunLogsInvalidConfiguration(t *testing.T) {
 	if err := run([]string{"run", "--config", configPath}); err == nil {
 		t.Fatal("expected invalid configuration error")
 	}
-	content, err := os.ReadFile(filepath.Join(cacheRoot, "GitConverge", "runs.jsonl"))
+	content, err := os.ReadFile(filepath.Join(stateDir, "runs.jsonl"))
 	if err != nil {
 		t.Fatal(err)
 	}

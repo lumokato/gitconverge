@@ -1,0 +1,36 @@
+# macOS Intel/Apple Silicon: build the worker for the actual host architecture.
+# Existing, independently authenticated Git worktrees are required.
+version = 1
+interval = "10m"
+run_timeout = "8m"
+command_timeout = "2m"
+max_parallel = 2
+state_dir = "~/Library/Caches/GitConverge"
+
+[logging]
+enabled = true
+max_age = "336h"
+max_size_mb = 10
+
+[notification]
+type = "none"
+
+[[repositories]]
+id = "core"
+path = "~/Core"
+remote = "core-server"
+branch = "main"
+divergence = "notify"
+fetch_interval = "10m"
+[repositories.fallback_commit]
+enabled = false
+
+[[repositories]]
+id = "personal-skills"
+path = "~/.agents/skills"
+remote = "skills-server"
+branch = "main"
+divergence = "notify"
+fetch_interval = "10m"
+[repositories.fallback_commit]
+enabled = false

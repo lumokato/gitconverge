@@ -1,6 +1,6 @@
 # GitConverge
 
-GitConverge 是面向 Windows 和 Linux 的多仓库 Git 自动收敛工具。Windows 版本通过托盘和本机管理界面配置、观察仓库；Linux 版本以短命 worker 配合 `systemd --user` timer 周期运行，使用可迁移的 TOML 配置。
+GitConverge 是面向 Windows、Linux 和 macOS 的多仓库 Git 自动收敛工具。Windows 版本通过托盘和本机管理界面配置、观察仓库；Linux 版本以短命 worker 配合 `systemd --user` timer；macOS Intel 版本提供原生菜单栏 `.app` 与内嵌本机管理界面，独立 LaunchAgent 周期同步，使用可迁移的 TOML 配置。
 
 GitConverge 使用系统 Git CLI，在明确的安全边界内完成 fetch、非强制 push、fast-forward 和可选三方合并。它适合让 Windows 与 Linux 设备上的普通 Git 仓库持续靠拢，同时保留 Git 历史、冲突现场和人工决策权。
 
@@ -11,7 +11,7 @@ GitConverge 使用系统 Git CLI，在明确的安全边界内完成 fetch、非
 - 本地领先时执行非强制 push；本地落后且工作树干净时执行 fast-forward。
 - 分叉可选择停止并提醒，或尝试三方合并；真实冲突会中止合并并保留现场。
 - 工作树有未提交修改时，仍可传输已有提交，但不会自动 fast-forward 或合并远端变化。
-- Windows 托盘显示运行状态，并可打开管理界面或立即同步。
+- Windows 托盘/macOS 菜单栏显示运行状态，可打开管理界面或立即同步；Mac另有持久暂停/恢复、日志和退出UI但继续同步。
 - “运行记录”页面显示有限、脱敏的本机历史，默认保留 14 天且不超过 10 MiB。
 - 可选钉钉机器人通知；凭据保存后不会在前端回显。
 - Git 和 SSH 命令具有硬超时；Windows 使用 Job Object、Linux 使用独立进程组清理超时后的子进程树。
@@ -67,6 +67,47 @@ gitconverge uninstall
 ```
 
 Linux 示例见 [`config.linux.example.toml`](config.linux.example.toml)。GitConverge 不提供仓库内路径过滤；同步个人 Skills 前，必须由该仓库的 `.gitignore` 排除 `.system/`，并确认它没有被 Git 跟踪。示例中的 `fallback_commit` 默认关闭。
+
+## macOS 安装和使用
+
+需要系统 Git、Go 1.25+（源码构建），以及已有且可非交互认证的 Git 工作树。正式 Intel 桌面包及 SHA256 从 Releases 下载，安装、升级、暂停/恢复、登录启动、卸载与回滚见 [`macos/README.md`](macos/README.md)。不需要 sudo 或额外运行时；没有 Apple Developer ID 签名或公证（只有 ad-hoc 签名），不要全局关闭 Gatekeeper。Apple Silicon 尚未经过实机测试，不宣称支持。源码 CLI 构建示例：
+
+```bash
+go test ./...
+go vet ./...
+go build -trimpath -o gitconverge ./cmd/gitconverge
+# 桌面发行包：在干净提交树运行 bash scripts/build-macos-release.sh <新版本号>
+# 编辑示例，核实两个现有工作树、remote/branch 和独立 Mac SSH 身份。
+./gitconverge check --config ./config.macos.example.toml
+./gitconverge install --config ./config.macos.example.toml
+~/.local/bin/gitconverge run --json
+launchctl print "gui/$(id -u)/com.gitconverge.worker"
+```
+
+`check` 只检查 TOML 结构，不证明目录是 Git 工作树，也不验证网络认证。不要在尚未取得完整仓库/认证时宣称接入完成。安装前请检查 Skills 仓库的 `.gitignore` 与已跟踪清单，排除 `.system/`、`.skill-learning/` 等运行态，且不要把 Pi 的 models/auth 配置放进同步根。
+
+安装位置：
+
+- worker：`~/.local/bin/gitconverge`
+- 配置：`~/Library/Application Support/GitConverge/config.toml`
+- LaunchAgent：`~/Library/LaunchAgents/com.gitconverge.worker.plist`
+- 默认状态及有限运行日志：`~/Library/Caches/GitConverge/{state.json,runs.jsonl}`（默认14天/10 MiB）
+- 每次安装/更新前恢复点：`~/Library/Application Support/GitConverge/backups/<timestamp>/manifest.txt`。备份保留原文件字节和权限，不自动清理。安装失败会恢复被替换文件；升级已加载的任务时先卸载旧任务再替换。
+
+LaunchAgent 在当前 GUI 登录会话下运行：加载后首轮执行，`StartInterval` 默认600秒；同一任务不会并发运行，worker另有文件锁。`run_timeout` 和每条Git命令超时由worker强制执行，Unix子进程组会一起清理。调度传递非交互Git/SSH环境，要求已可信的host-key，不接受首次连接时自动信任。SSH密钥/agent是否能在登录会话使用需另验，安装不复制或创建服务器授权。
+
+睡眠时不会执行；睡眠期间错过的间隔在唤醒时合并为一轮。注销会卸载，重新登录再加载。以上为launchd机制说明，不保证设备离线、睡眠、注销后仍常驻；不要为此自动修改系统电源设置或安装系统daemon。终端stdout/stderr送往`/dev/null`，worker的结构化结果与配置失败保存在有界`runs.jsonl`；worker本身无法启动时查`launchctl print`的退出码及系统launchd日志。
+
+```bash
+# 手工卸载当前会话调度（下次登录会再次加载）；持久暂停请用菜单栏“暂停自动同步”
+launchctl bootout "gui/$(id -u)/com.gitconverge.worker"
+# 恢复
+launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.gitconverge.worker.plist"
+# 卸载：停用并移除worker/plist，保留配置、日志、恢复点和所有仓库
+~/.local/bin/gitconverge uninstall
+```
+
+回滚时先`bootout`，按对应`manifest.txt`把原有文件恢复到列出的路径和权限；不存在的旧文件无需恢复。恢复旧plist后再`bootstrap`。备份中含配置，按凭据材料保管，不放进Core/Skills Git。
 
 ## 安全边界
 
