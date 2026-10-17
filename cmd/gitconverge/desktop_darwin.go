@@ -40,7 +40,7 @@ func desktopCommand() error {
 	// Installed desktop controls the canonical worker; a development preview
 	// remains unmanaged and cannot silently rewrite the installed schedule.
 	home, _ := os.UserHomeDir()
-	appWorker := filepath.Join(home, "Applications", "GitConverge.app", "Contents", "MacOS", "gitconverge")
+	appWorker := filepath.Join(home, "Applications", "GitConverge.app", "Contents", "MacOS", "gitconverge-worker")
 	if worker == appWorker {
 		worker = filepath.Join(home, ".local", "bin", "gitconverge")
 	}

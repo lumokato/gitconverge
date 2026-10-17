@@ -16,9 +16,9 @@ if [[ ! -f "$config" && $# == 0 ]]; then
 fi
 source_config="${1:-$config}"
 [[ -f "$source_config" ]] || { echo 'Configuration not found' >&2; exit 1; }
-./GitConverge.app/Contents/MacOS/gitconverge check --config "$source_config" >/dev/null
+./GitConverge.app/Contents/MacOS/gitconverge-worker check --config "$source_config" >/dev/null
 # Check worker lock before any launchd changes. CLI installer repeats under lock.
-./GitConverge.app/Contents/MacOS/gitconverge status --json | /usr/bin/python3 -c 'import json,sys; s=json.load(sys.stdin); sys.exit("Sync active; retry when idle" if s["runtime"]["syncActive"] else 0)'
+./GitConverge.app/Contents/MacOS/gitconverge-worker status --json | /usr/bin/python3 -c 'import json,sys; s=json.load(sys.stdin); sys.exit("Sync active; retry when idle" if s["runtime"]["syncActive"] else 0)'
 backup="$HOME/Library/Application Support/GitConverge/desktop-backups/$(date +%Y%m%dT%H%M%S)-$$"
 mkdir -p "$backup" "$HOME/Applications" "$(dirname "$plist")"
 chmod 700 "$backup"
@@ -53,7 +53,7 @@ rollback() {
 trap rollback ERR
 if [[ -d "$app" ]]; then mv "$app" "$backup/previous-live.app"; fi
 ditto ./GitConverge.app "$app"
-./GitConverge.app/Contents/MacOS/gitconverge install --config "$source_config"
+./GitConverge.app/Contents/MacOS/gitconverge-worker install --config "$source_config"
 /usr/bin/python3 - "$app" "$plist" <<'PY'
 import plistlib,sys,os
 app,path=sys.argv[1:]

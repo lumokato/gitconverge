@@ -18,7 +18,7 @@ root="dist/$name"
 [[ ! -e "$root" ]] || { echo "Build output already exists: $root" >&2; exit 1; }
 app="$root/GitConverge.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-go build -trimpath -ldflags "-X main.version=${version}+${commit}" -o "$app/Contents/MacOS/gitconverge" ./cmd/gitconverge
+go build -trimpath -ldflags "-X main.version=${version}+${commit}" -o "$app/Contents/MacOS/gitconverge-worker" ./cmd/gitconverge
 swiftc -O -target x86_64-apple-macos12.0 -framework AppKit -framework WebKit macos/GitConverge.swift -o "$app/Contents/MacOS/GitConverge"
 /usr/libexec/PlistBuddy -c 'Clear dict' "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Add :CFBundleIdentifier string com.gitconverge.menubar' -c 'Add :CFBundleExecutable string GitConverge' -c 'Add :CFBundleName string GitConverge' -c 'Add :CFBundlePackageType string APPL' -c "Add :CFBundleShortVersionString string $version" -c "Add :CFBundleVersion string $version" -c 'Add :LSUIElement bool true' -c 'Add :LSMinimumSystemVersion string 12.0' "$app/Contents/Info.plist"
@@ -26,7 +26,7 @@ printf '%s\n' "version=$version" "commit=$(git rev-parse HEAD)" 'architecture=x8
 cp LICENSE THIRD_PARTY_NOTICES.md "$app/Contents/Resources/"
 cp -R third_party_licenses "$app/Contents/Resources/"
 # Local ad-hoc signature only; NOT an Apple Developer ID signature or notarization.
-codesign --force --sign - "$app/Contents/MacOS/gitconverge"
+codesign --force --sign - "$app/Contents/MacOS/gitconverge-worker"
 codesign --force --sign - "$app"
 codesign --verify --deep --strict "$app"
 cp macos/install.sh macos/uninstall.sh macos/README.md "$root/"

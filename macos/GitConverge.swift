@@ -50,11 +50,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
                 self.openDashboard()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                     if let window = self.window { self.capture(window.windowNumber, directory + "/dashboard-private.png") }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    let captureTimer = Timer(timeInterval: 2, repeats: false) { _ in
                         self.captureMenu(directory)
                         self.menu.cancelTracking()
                         NSApp.terminate(nil)
                     }
+                    RunLoop.main.add(captureTimer, forMode: .common)
                     self.item.button?.performClick(nil)
                 }
             }
@@ -79,7 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate {
     }
     func startBridge() {
         let process = Process()
-        process.executableURL = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/gitconverge")
+        process.executableURL = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/gitconverge-worker")
         process.arguments = ["desktop-bridge"]
         let incoming = Pipe(), outgoing = Pipe()
         process.standardInput = incoming; process.standardOutput = outgoing
